@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CER Response Rate Dashboard | UWI CETL</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'uwi-brown': '#4E3629',
+            'uwi-blue': '#1E5C8E',
+            'uwi-gold': '#FDB913',
+            'uwi-red': '#C8102E',
+            'uwi-light-blue': '#6CACE4',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .uwi-header {
+      background: #ffffff;
+    }
+    .uwi-card-header {
+      background: linear-gradient(135deg, #1E5C8E 0%, #164a70 100%);
+    }
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1E5C8E;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    // Icon Components
+    const Upload = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    );
+
+    const Search = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    );
+
+    const TrendingUp = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+      </svg>
+    );
+
+    const Users = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    );
+
+    const BookOpen = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+      </svg>
+    );
+
+    const GraduationCap = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+      </svg>
+    );
+
+    const AlertCircle = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    );
+
+    const Building2 = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>
+      </svg>
+    );
+
+    const Building = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>
+      </svg>
+    );
+
+    const RefreshCw = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+    );
+
+    const CheckCircle = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+    );
+
+    const XCircle = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+    );
+
+    const Key = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+      </svg>
+    );
+
+    const ChevronDown = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    );
+
+    const ChevronUp = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="18 15 12 9 6 15"/>
+      </svg>
+    );
+
+    const Cloud = ({ className }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+      </svg>
+    );
+
+    // Qualtrics API Configuration
+    const QUALTRICS_CONFIG = {
+      baseUrl: 'https://monapilot.yul1.qualtrics.com/API/v3',
+      courseDesignSurveyId: 'SV_6xtEHLsL42W71iK',
+      learningExpSurveyId: 'SV_9uJsRkIXOM6Q79I',
+      courseCodeField: 'CourseCode',
+      teacherIdField: 'teacherId'
+    };
+
+    // CETL Logo Header Component
+    const CETLHeader = ({ showBetaBadge }) => (
+      <div className="uwi-header py-6 mb-6 shadow-md border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
+          <img 
+            src="CETL_Logo_nobg.png" 
+            alt="UWI CETL Logo" 
+            className="h-36 mb-3"
+          />
+          <p className="text-black text-base font-medium tracking-wide">Centre for Excellence in Teaching and Learning</p>
+          {showBetaBadge && <span className="mt-2 px-3 py-1 bg-uwi-gold/20 text-uwi-brown text-xs font-semibold rounded-full">Admin Mode</span>}
+        </div>
+      </div>
+    );
+
+    // Login Screen Component
+    const LoginScreen = ({ onLogin, error, isLoading }) => {
+      const [teacherIdInput, setTeacherIdInput] = useState('');
+      
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (teacherIdInput.trim()) {
+          onLogin(teacherIdInput.trim());
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-100 flex flex-col">
+          <CETLHeader showBetaBadge={false} />
+          <div className="flex-1 flex items-center justify-center px-6 -mt-20">
+            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full border-t-4 border-uwi-blue">
+              <h1 className="text-2xl font-bold text-uwi-brown text-center mb-2">CER Response Rate Dashboard</h1>
+              <p className="text-gray-600 text-center mb-6">View your course response rates</p>
+              
+              <form onSubmit={handleSubmit}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter your Teacher ID
+                </label>
+                <input
+                  type="text"
+                  value={teacherIdInput}
+                  onChange={(e) => setTeacherIdInput(e.target.value)}
+                  placeholder="e.g., 12345"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-uwi-blue focus:border-uwi-blue text-lg"
+                  autoFocus
+                  autoComplete="off"
+                />
+                {error && (
+                  <p className="mt-2 text-sm text-red-600">{error}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={!teacherIdInput.trim() || isLoading}
+                  className="w-full mt-4 px-4 py-3 bg-uwi-blue text-white font-semibold rounded-md hover:bg-uwi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <><span className="spinner"></span>Loading...</>
+                  ) : (
+                    'View My Dashboard'
+                  )}
+                </button>
+              </form>
+              
+              <p className="mt-6 text-xs text-gray-500 text-center">
+                Your Teacher ID can be found in your course assignment records.
+              </p>
+            </div>
+          </div>
+          <footer className="text-center py-4 border-t border-gray-200 bg-white">
+            <p className="text-sm text-uwi-brown">© {new Date().getFullYear()} The University of the West Indies, St. Augustine Campus</p>
+            <p className="text-xs text-gray-500 mt-1">Centre for Excellence in Teaching and Learning (CETL)</p>
+          </footer>
+        </div>
+      );
+    };
+
+    const CERDashboard = () => {
+      const [enrollmentData, setEnrollmentData] = useState([]);
+      const [enrollmentFiles, setEnrollmentFiles] = useState([]);
+      const [courseDesignResponses, setCourseDesignResponses] = useState([]);
+      const [learningExpResponses, setLearningExpResponses] = useState([]);
+      const [selectedFaculties, setSelectedFaculties] = useState([]);
+      const [selectedDepartments, setSelectedDepartments] = useState([]);
+      const [selectedTeachers, setSelectedTeachers] = useState([]);
+      const [selectedCourseCodes, setSelectedCourseCodes] = useState([]);
+      const [courseCodeSearch, setCourseCodeSearch] = useState('');
+      const [sortBy, setSortBy] = useState('courseCode');
+      const [sortOrder, setSortOrder] = useState('asc');
+      const [lecturerMode, setLecturerMode] = useState(false);
+      const [lecturerTeacherId, setLecturerTeacherId] = useState(null);
+      const [hideFilters, setHideFilters] = useState(false);
+
+      // API-related state
+      const [apiToken, setApiToken] = useState('');
+      const [showApiSettings, setShowApiSettings] = useState(false);
+      const [apiStatus, setApiStatus] = useState('disconnected');
+      const [apiError, setApiError] = useState('');
+      const [isLoadingCD, setIsLoadingCD] = useState(false);
+      const [isLoadingLE, setIsLoadingLE] = useState(false);
+      const [lastFetchTime, setLastFetchTime] = useState(null);
+      const [cdResponseCount, setCdResponseCount] = useState(0);
+      const [leResponseCount, setLeResponseCount] = useState(0);
+
+      // Login and auto-load state
+      const [isLoggedIn, setIsLoggedIn] = useState(false);
+      const [isAdminMode, setIsAdminMode] = useState(false);
+      const [loginError, setLoginError] = useState('');
+      const [isLoadingData, setIsLoadingData] = useState(true);
+      const [dataLoadError, setDataLoadError] = useState('');
+      const [lecturerName, setLecturerName] = useState('');
+
+      // Auto-load enrollment data from JSON file on mount
+      useEffect(() => {
+        const loadEnrollmentData = async () => {
+          try {
+            const response = await fetch('enrollment-data.json');
+            if (!response.ok) {
+              throw new Error('Could not load enrollment data file');
+            }
+            const data = await response.json();
+            
+            if (data.enrollmentData && Array.isArray(data.enrollmentData)) {
+              setEnrollmentData(data.enrollmentData);
+              setEnrollmentFiles(['enrollment-data.json']);
+            }
+            
+            // If API token is in the config, use it
+            if (data.apiConfig && data.apiConfig.apiToken) {
+              setApiToken(data.apiConfig.apiToken);
+              setApiStatus('connected');
+            }
+            
+            setIsLoadingData(false);
+          } catch (error) {
+            console.error('Error loading enrollment data:', error);
+            setDataLoadError('Could not load enrollment data. Please contact the administrator.');
+            setIsLoadingData(false);
+          }
+        };
+
+        // Check for admin mode
+        const params = new URLSearchParams(window.location.search);
+        const adminParam = params.get('admin');
+        const teacherIdParam = params.get('teacherId');
+        
+        if (adminParam === 'true') {
+          setIsAdminMode(true);
+          setIsLoggedIn(true);
+          setHideFilters(false);
+        } else if (teacherIdParam) {
+          // Direct link with teacherId (backwards compatibility)
+          setLecturerTeacherId(teacherIdParam);
+          setLecturerMode(true);
+          setIsLoggedIn(true);
+          setHideFilters(true);
+        }
+
+        loadEnrollmentData();
+      }, []);
+
+      // Handle lecturer login with Teacher ID
+      const handleLecturerLogin = (teacherId) => {
+        setLoginError('');
+        
+        // Check if teacherId exists in enrollment data
+        const teacherExists = enrollmentData.some(row => 
+          String(row.teacherId || row.TeacherId || '') === String(teacherId)
+        );
+        
+        if (teacherExists) {
+          // Find teacher name
+          const teacherRecord = enrollmentData.find(row => 
+            String(row.teacherId || row.TeacherId || '') === String(teacherId)
+          );
+          const name = `${teacherRecord?.teacherFirstName || ''} ${teacherRecord?.teacherLastName || ''}`.trim();
+          
+          setLecturerTeacherId(teacherId);
+          setLecturerMode(true);
+          setIsLoggedIn(true);
+          setHideFilters(true);
+          setLecturerName(name);
+        } else {
+          setLoginError('Teacher ID not found. Please check your ID and try again.');
+        }
+      };
+
+      // Logout function
+      const handleLogout = () => {
+        setIsLoggedIn(false);
+        setLecturerMode(false);
+        setLecturerTeacherId(null);
+        setLecturerName('');
+        setHideFilters(false);
+      };
+
+      // Load API token from localStorage on mount (only for admin mode)
+      useEffect(() => {
+        if (isAdminMode) {
+          const savedToken = localStorage.getItem('qualtrics_api_token');
+          if (savedToken) {
+            setApiToken(savedToken);
+            setApiStatus('connected');
+          }
+        }
+      }, [isAdminMode]);
+
+      // Save API token to localStorage
+      const saveApiToken = () => {
+        if (apiToken.trim()) {
+          localStorage.setItem('qualtrics_api_token', apiToken.trim());
+          setApiStatus('connected');
+          setApiError('');
+        }
+      };
+
+      // Clear API token
+      const clearApiToken = () => {
+        localStorage.removeItem('qualtrics_api_token');
+        setApiToken('');
+        setApiStatus('disconnected');
+        setCourseDesignResponses([]);
+        setLearningExpResponses([]);
+        setCdResponseCount(0);
+        setLeResponseCount(0);
+        setLastFetchTime(null);
+      };
+
+      // Test API connection
+      const testApiConnection = async () => {
+        if (!apiToken.trim()) {
+          setApiError('Please enter an API token');
+          return;
+        }
+
+        setApiStatus('connecting');
+        setApiError('');
+
+        try {
+          const response = await fetch(`${QUALTRICS_CONFIG.baseUrl}/whoami`, {
+            method: 'GET',
+            headers: {
+              'X-API-TOKEN': apiToken.trim(),
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setApiStatus('connected');
+            saveApiToken();
+            alert(`Connection successful!\n\nConnected as: ${data.result.userName}\nOrganization: ${data.result.organizationId}`);
+          } else {
+            const errorData = await response.json();
+            setApiStatus('error');
+            setApiError(`API Error: ${errorData.meta?.error?.errorMessage || response.statusText}`);
+          }
+        } catch (error) {
+          setApiStatus('error');
+          setApiError(`Connection failed: ${error.message}. This may be due to CORS restrictions - see note below.`);
+        }
+      };
+
+      // Fetch responses from Qualtrics API
+      const fetchSurveyResponses = async (surveyId, setter, setLoading, setCount) => {
+        if (!apiToken) {
+          setApiError('Please configure your API token first');
+          return;
+        }
+
+        setLoading(true);
+        setApiError('');
+
+        try {
+          // Step 1: Create export
+          const createExportResponse = await fetch(
+            `${QUALTRICS_CONFIG.baseUrl}/surveys/${surveyId}/export-responses`,
+            {
+              method: 'POST',
+              headers: {
+                'X-API-TOKEN': apiToken,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                format: 'json',
+                compress: false
+              })
+            }
+          );
+
+          if (!createExportResponse.ok) {
+            throw new Error(`Failed to create export: ${createExportResponse.statusText}`);
+          }
+
+          const createExportData = await createExportResponse.json();
+          const progressId = createExportData.result.progressId;
+
+          // Step 2: Check export progress
+          let exportComplete = false;
+          let fileId = null;
+          let attempts = 0;
+          const maxAttempts = 30;
+
+          while (!exportComplete && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const progressResponse = await fetch(
+              `${QUALTRICS_CONFIG.baseUrl}/surveys/${surveyId}/export-responses/${progressId}`,
+              {
+                method: 'GET',
+                headers: {
+                  'X-API-TOKEN': apiToken,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+
+            if (!progressResponse.ok) {
+              throw new Error(`Failed to check progress: ${progressResponse.statusText}`);
+            }
+
+            const progressData = await progressResponse.json();
+            
+            if (progressData.result.status === 'complete') {
+              exportComplete = true;
+              fileId = progressData.result.fileId;
+            } else if (progressData.result.status === 'failed') {
+              throw new Error('Export failed');
+            }
+            
+            attempts++;
+          }
+
+          if (!exportComplete) {
+            throw new Error('Export timed out');
+          }
+
+          // Step 3: Download file
+          const downloadResponse = await fetch(
+            `${QUALTRICS_CONFIG.baseUrl}/surveys/${surveyId}/export-responses/${fileId}/file`,
+            {
+              method: 'GET',
+              headers: {
+                'X-API-TOKEN': apiToken
+              }
+            }
+          );
+
+          if (!downloadResponse.ok) {
+            throw new Error(`Failed to download: ${downloadResponse.statusText}`);
+          }
+
+          const responseData = await downloadResponse.json();
+          const responses = responseData.responses || [];
+          
+          // Transform responses to match expected format
+          const transformedResponses = responses.map(r => ({
+            ...r.values,
+            CourseCode: r.values[QUALTRICS_CONFIG.courseCodeField] || r.values.CourseCode || r.values.courseCode,
+            teacherId: r.values[QUALTRICS_CONFIG.teacherIdField] || r.values.teacherId || r.values.TeacherId
+          }));
+
+          setter(transformedResponses);
+          setCount(transformedResponses.length);
+          setLastFetchTime(new Date());
+
+        } catch (error) {
+          setApiError(`Error fetching responses: ${error.message}`);
+          console.error('Fetch error:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      // Fetch both surveys
+      const fetchAllResponses = async () => {
+        await Promise.all([
+          fetchSurveyResponses(QUALTRICS_CONFIG.courseDesignSurveyId, setCourseDesignResponses, setIsLoadingCD, setCdResponseCount),
+          fetchSurveyResponses(QUALTRICS_CONFIG.learningExpSurveyId, setLearningExpResponses, setIsLoadingLE, setLeResponseCount)
+        ]);
+      };
+
+      const handleFileUpload = (file, setter) => {
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            setter(results.data);
+          },
+          error: (error) => {
+            alert(`Error parsing file: ${error.message}`);
+          }
+        });
+      };
+
+      const handleMultipleEnrollmentFiles = (files) => {
+        const fileArray = Array.from(files);
+        let allData = [];
+        let filesProcessed = 0;
+
+        fileArray.forEach((file, index) => {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              allData = [...allData, ...results.data];
+              filesProcessed++;
+              
+              if (filesProcessed === fileArray.length) {
+                setEnrollmentData(allData);
+                setEnrollmentFiles(fileArray.map(f => f.name));
+              }
+            },
+            error: (error) => {
+              alert(`Error parsing file ${file.name}: ${error.message}`);
+            }
+          });
+        });
+      };
+
+      const clearEnrollmentData = () => {
+        setEnrollmentData([]);
+        setEnrollmentFiles([]);
+      };
+
+      const calculateMetrics = useMemo(() => {
+        if (enrollmentData.length === 0) return null;
+
+        const courseMap = new Map();
+        
+        enrollmentData.forEach(row => {
+          const courseKey = row.CourseCode || row.courseCode;
+          if (!courseKey) return;
+
+          const rowTeacherId = String(row.teacherId || row.TeacherId || '');
+          if (lecturerMode && lecturerTeacherId && rowTeacherId !== lecturerTeacherId) {
+            return;
+          }
+
+          if (!courseMap.has(courseKey)) {
+            courseMap.set(courseKey, {
+              courseCode: courseKey,
+              courseTitle: row.CourseTitle || row.courseTitle || '',
+              department: row.courseDepartment || row.department || 'Unknown',
+              faculty: row.courseFaculty || row.faculty || '',
+              campus: row.Campus || row.campus || '',
+              uniqueStudents: new Set(),
+              totalPairings: 0,
+              teachers: new Set(),
+              teacherDetails: new Map()
+            });
+          }
+
+          const course = courseMap.get(courseKey);
+          const studentId = row.studentId || row.StudentId;
+          const teacherId = row.teacherId || row.TeacherId;
+          const teacherName = `${row.teacherFirstName || ''} ${row.teacherLastName || ''}`.trim() || `Teacher ${teacherId}`;
+          
+          if (studentId) course.uniqueStudents.add(studentId);
+          if (teacherId) {
+            course.teachers.add(teacherId);
+            if (!course.teacherDetails.has(teacherId)) {
+              course.teacherDetails.set(teacherId, teacherName);
+            }
+          }
+          course.totalPairings++;
+        });
+
+        const courseMetrics = Array.from(courseMap.values()).map(course => {
+          const courseDesignExpected = course.uniqueStudents.size;
+          const learningExpExpected = course.totalPairings;
+
+          const cdResponses = courseDesignResponses.filter(r => 
+            (r.CourseCode || r.courseCode) === course.courseCode
+          ).length;
+
+          const leResponses = learningExpResponses.filter(r => 
+            (r.CourseCode || r.courseCode) === course.courseCode
+          ).length;
+
+          const cdRate = courseDesignExpected > 0 ? (cdResponses / courseDesignExpected) * 100 : 0;
+          const leRate = learningExpExpected > 0 ? (leResponses / learningExpExpected) * 100 : 0;
+          
+          const totalExpected = courseDesignExpected + learningExpExpected;
+          const totalReceived = cdResponses + leResponses;
+          const combinedRate = totalExpected > 0 ? (totalReceived / totalExpected) * 100 : 0;
+
+          return {
+            ...course,
+            courseDesignExpected,
+            courseDesignReceived: cdResponses,
+            courseDesignRate: cdRate,
+            learningExpExpected,
+            learningExpReceived: leResponses,
+            learningExpRate: leRate,
+            combinedExpected: totalExpected,
+            combinedReceived: totalReceived,
+            combinedRate: combinedRate,
+            teacherCount: course.teachers.size,
+            teacherNames: Array.from(course.teacherDetails.values())
+          };
+        });
+
+        return courseMetrics;
+      }, [enrollmentData, courseDesignResponses, learningExpResponses, lecturerMode, lecturerTeacherId]);
+
+      const facultySummaries = useMemo(() => {
+        if (!calculateMetrics) return [];
+
+        const facultyMap = new Map();
+
+        calculateMetrics.forEach(course => {
+          const faculty = course.faculty || 'Unknown Faculty';
+          if (!facultyMap.has(faculty)) {
+            facultyMap.set(faculty, {
+              faculty: faculty,
+              courseCount: 0,
+              departmentCount: new Set(),
+              cdExpected: 0,
+              cdReceived: 0,
+              leExpected: 0,
+              leReceived: 0,
+              combinedExpected: 0,
+              combinedReceived: 0
+            });
+          }
+
+          const facultyData = facultyMap.get(faculty);
+          facultyData.courseCount++;
+          facultyData.departmentCount.add(course.department);
+          facultyData.cdExpected += course.courseDesignExpected;
+          facultyData.cdReceived += course.courseDesignReceived;
+          facultyData.leExpected += course.learningExpExpected;
+          facultyData.leReceived += course.learningExpReceived;
+          facultyData.combinedExpected += course.combinedExpected;
+          facultyData.combinedReceived += course.combinedReceived;
+        });
+
+        return Array.from(facultyMap.values()).map(faculty => ({
+          ...faculty,
+          departmentCount: faculty.departmentCount.size,
+          cdRate: faculty.cdExpected > 0 ? (faculty.cdReceived / faculty.cdExpected) * 100 : 0,
+          leRate: faculty.leExpected > 0 ? (faculty.leReceived / faculty.leExpected) * 100 : 0,
+          combinedRate: faculty.combinedExpected > 0 ? (faculty.combinedReceived / faculty.combinedExpected) * 100 : 0
+        })).sort((a, b) => a.faculty.localeCompare(b.faculty));
+      }, [calculateMetrics]);
+
+      const departmentSummaries = useMemo(() => {
+        if (!calculateMetrics) return [];
+
+        const deptMap = new Map();
+
+        calculateMetrics.forEach(course => {
+          const dept = course.department;
+          const faculty = course.faculty || 'Unknown Faculty';
+          if (!deptMap.has(dept)) {
+            deptMap.set(dept, {
+              department: dept,
+              faculty: faculty,
+              courseCount: 0,
+              cdExpected: 0,
+              cdReceived: 0,
+              leExpected: 0,
+              leReceived: 0,
+              combinedExpected: 0,
+              combinedReceived: 0
+            });
+          }
+
+          const deptData = deptMap.get(dept);
+          deptData.courseCount++;
+          deptData.cdExpected += course.courseDesignExpected;
+          deptData.cdReceived += course.courseDesignReceived;
+          deptData.leExpected += course.learningExpExpected;
+          deptData.leReceived += course.learningExpReceived;
+          deptData.combinedExpected += course.combinedExpected;
+          deptData.combinedReceived += course.combinedReceived;
+        });
+
+        return Array.from(deptMap.values()).map(dept => ({
+          ...dept,
+          cdRate: dept.cdExpected > 0 ? (dept.cdReceived / dept.cdExpected) * 100 : 0,
+          leRate: dept.leExpected > 0 ? (dept.leReceived / dept.leExpected) * 100 : 0,
+          combinedRate: dept.combinedExpected > 0 ? (dept.combinedReceived / dept.combinedExpected) * 100 : 0
+        })).sort((a, b) => {
+          const facultyCompare = a.faculty.localeCompare(b.faculty);
+          if (facultyCompare !== 0) return facultyCompare;
+          return a.department.localeCompare(b.department);
+        });
+      }, [calculateMetrics]);
+
+      const filteredAndSorted = useMemo(() => {
+        if (!calculateMetrics) return [];
+
+        let filtered = calculateMetrics;
+        
+        if (selectedFaculties.length > 0) {
+          filtered = filtered.filter(c => selectedFaculties.includes(c.faculty || 'Unknown Faculty'));
+        }
+        
+        if (selectedDepartments.length > 0) {
+          filtered = filtered.filter(c => selectedDepartments.includes(c.department));
+        }
+
+        if (selectedTeachers.length > 0) {
+          filtered = filtered.filter(c => 
+            c.teacherNames && c.teacherNames.some(name => selectedTeachers.includes(name))
+          );
+        }
+
+        if (selectedCourseCodes.length > 0) {
+          filtered = filtered.filter(c => selectedCourseCodes.includes(c.courseCode));
+        }
+
+        const sorted = [...filtered].sort((a, b) => {
+          let aVal, bVal;
+          
+          switch(sortBy) {
+            case 'courseCode':
+              aVal = a.courseCode;
+              bVal = b.courseCode;
+              break;
+            case 'cdRate':
+              aVal = a.courseDesignRate;
+              bVal = b.courseDesignRate;
+              break;
+            case 'leRate':
+              aVal = a.learningExpRate;
+              bVal = b.learningExpRate;
+              break;
+            default:
+              aVal = a.courseCode;
+              bVal = b.courseCode;
+          }
+
+          if (typeof aVal === 'string') {
+            return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+          }
+          return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+        });
+
+        return sorted;
+      }, [calculateMetrics, selectedFaculties, selectedDepartments, selectedTeachers, selectedCourseCodes, sortBy, sortOrder]);
+
+      const faculties = useMemo(() => {
+        if (!calculateMetrics) return [];
+        return [...new Set(calculateMetrics.map(c => c.faculty || 'Unknown Faculty'))].sort();
+      }, [calculateMetrics]);
+
+      const departments = useMemo(() => {
+        if (!calculateMetrics) return [];
+        let depts = calculateMetrics;
+        if (selectedFaculties.length > 0) {
+          depts = depts.filter(c => selectedFaculties.includes(c.faculty || 'Unknown Faculty'));
+        }
+        return [...new Set(depts.map(c => c.department))].sort();
+      }, [calculateMetrics, selectedFaculties]);
+
+      const teachers = useMemo(() => {
+        if (!calculateMetrics) return [];
+        let courses = calculateMetrics;
+        if (selectedFaculties.length > 0) {
+          courses = courses.filter(c => selectedFaculties.includes(c.faculty || 'Unknown Faculty'));
+        }
+        if (selectedDepartments.length > 0) {
+          courses = courses.filter(c => selectedDepartments.includes(c.department));
+        }
+        const allTeachers = new Set();
+        courses.forEach(c => {
+          if (c.teacherNames) {
+            c.teacherNames.forEach(name => allTeachers.add(name));
+          }
+        });
+        return Array.from(allTeachers).sort();
+      }, [calculateMetrics, selectedFaculties, selectedDepartments]);
+
+      const courseCodes = useMemo(() => {
+        if (!calculateMetrics) return [];
+        let courses = calculateMetrics;
+        if (selectedFaculties.length > 0) {
+          courses = courses.filter(c => selectedFaculties.includes(c.faculty || 'Unknown Faculty'));
+        }
+        if (selectedDepartments.length > 0) {
+          courses = courses.filter(c => selectedDepartments.includes(c.department));
+        }
+        if (selectedTeachers.length > 0) {
+          courses = courses.filter(c => 
+            c.teacherNames && c.teacherNames.some(name => selectedTeachers.includes(name))
+          );
+        }
+        return courses.map(c => c.courseCode).sort();
+      }, [calculateMetrics, selectedFaculties, selectedDepartments, selectedTeachers]);
+
+      const filteredCourseCodes = useMemo(() => {
+        if (!courseCodeSearch.trim()) return courseCodes;
+        const searchLower = courseCodeSearch.toLowerCase().trim();
+        return courseCodes.filter(code => code.toLowerCase().includes(searchLower));
+      }, [courseCodes, courseCodeSearch]);
+
+      // Clean up invalid selections when upstream filters change
+      useEffect(() => {
+        if (selectedDepartments.length > 0) {
+          const validDepts = selectedDepartments.filter(d => departments.includes(d));
+          if (validDepts.length !== selectedDepartments.length) {
+            setSelectedDepartments(validDepts);
+          }
+        }
+      }, [departments]);
+
+      useEffect(() => {
+        if (selectedTeachers.length > 0) {
+          const validTeachers = selectedTeachers.filter(t => teachers.includes(t));
+          if (validTeachers.length !== selectedTeachers.length) {
+            setSelectedTeachers(validTeachers);
+          }
+        }
+      }, [teachers]);
+
+      useEffect(() => {
+        if (selectedCourseCodes.length > 0) {
+          const validCodes = selectedCourseCodes.filter(c => courseCodes.includes(c));
+          if (validCodes.length !== selectedCourseCodes.length) {
+            setSelectedCourseCodes(validCodes);
+          }
+        }
+      }, [courseCodes]);
+
+      const toggleFaculty = (faculty) => {
+        setSelectedFaculties(prev => 
+          prev.includes(faculty) ? prev.filter(f => f !== faculty) : [...prev, faculty]
+        );
+      };
+
+      const toggleDepartment = (dept) => {
+        setSelectedDepartments(prev => 
+          prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+        );
+      };
+
+      const toggleTeacher = (teacher) => {
+        setSelectedTeachers(prev => 
+          prev.includes(teacher) ? prev.filter(t => t !== teacher) : [...prev, teacher]
+        );
+      };
+
+      const toggleCourseCode = (courseCode) => {
+        setSelectedCourseCodes(prev => 
+          prev.includes(courseCode) ? prev.filter(c => c !== courseCode) : [...prev, courseCode]
+        );
+      };
+
+      const clearAllFilters = () => {
+        setSelectedFaculties([]);
+        setSelectedDepartments([]);
+        setSelectedTeachers([]);
+        setSelectedCourseCodes([]);
+        setCourseCodeSearch('');
+      };
+
+      const filteredFacultySummaries = useMemo(() => {
+        if (!facultySummaries) return [];
+        if (selectedFaculties.length === 0) return facultySummaries;
+        return facultySummaries.filter(f => selectedFaculties.includes(f.faculty));
+      }, [facultySummaries, selectedFaculties]);
+
+      const filteredDepartmentSummaries = useMemo(() => {
+        if (!departmentSummaries) return [];
+        let filtered = departmentSummaries;
+        if (selectedFaculties.length > 0) {
+          filtered = filtered.filter(d => selectedFaculties.includes(d.faculty));
+        }
+        if (selectedDepartments.length > 0) {
+          filtered = filtered.filter(d => selectedDepartments.includes(d.department));
+        }
+        return filtered;
+      }, [departmentSummaries, selectedFaculties, selectedDepartments]);
+
+      const overallStats = useMemo(() => {
+        if (!filteredAndSorted.length) return null;
+
+        const totalCDExpected = filteredAndSorted.reduce((sum, c) => sum + c.courseDesignExpected, 0);
+        const totalCDReceived = filteredAndSorted.reduce((sum, c) => sum + c.courseDesignReceived, 0);
+        const totalLEExpected = filteredAndSorted.reduce((sum, c) => sum + c.learningExpExpected, 0);
+        const totalLEReceived = filteredAndSorted.reduce((sum, c) => sum + c.learningExpReceived, 0);
+        const totalCombinedExpected = filteredAndSorted.reduce((sum, c) => sum + c.combinedExpected, 0);
+        const totalCombinedReceived = filteredAndSorted.reduce((sum, c) => sum + c.combinedReceived, 0);
+
+        return {
+          courseDesignRate: totalCDExpected > 0 ? (totalCDReceived / totalCDExpected) * 100 : 0,
+          learningExpRate: totalLEExpected > 0 ? (totalLEReceived / totalLEExpected) * 100 : 0,
+          combinedRate: totalCombinedExpected > 0 ? (totalCombinedReceived / totalCombinedExpected) * 100 : 0,
+          totalCourses: filteredAndSorted.length,
+          totalCDExpected,
+          totalCDReceived,
+          totalLEExpected,
+          totalLEReceived,
+          totalCombinedExpected,
+          totalCombinedReceived
+        };
+      }, [filteredAndSorted]);
+
+      const getRateColor = (rate) => {
+        if (rate >= 75) return 'text-green-600 bg-green-50';
+        if (rate >= 50) return 'text-yellow-600 bg-yellow-50';
+        return 'text-red-600 bg-red-50';
+      };
+
+      const getRateBadge = (rate) => {
+        const color = getRateColor(rate);
+        return (
+          <span className={`px-3 py-1 rounded-full font-semibold ${color}`}>
+            {rate.toFixed(1)}%
+          </span>
+        );
+      };
+
+      const getProgressBar = (rate) => {
+        let bgColor = 'bg-red-500';
+        if (rate >= 75) bgColor = 'bg-green-500';
+        else if (rate >= 50) bgColor = 'bg-yellow-500';
+        
+        return (
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div 
+              className={`h-2.5 rounded-full ${bgColor}`} 
+              style={{ width: `${Math.min(rate, 100)}%` }}
+            ></div>
+          </div>
+        );
+      };
+
+      return (
+        <div>
+          {/* Loading State */}
+          {isLoadingData && (
+            <div className="min-h-screen bg-gray-100 flex flex-col">
+              <CETLHeader showBetaBadge={false} />
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <span className="spinner" style={{ width: '40px', height: '40px', borderWidth: '4px' }}></span>
+                  <p className="mt-4 text-uwi-brown">Loading dashboard data...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Data Load Error */}
+          {!isLoadingData && dataLoadError && (
+            <div className="min-h-screen bg-gray-100 flex flex-col">
+              <CETLHeader showBetaBadge={false} />
+              <div className="flex-1 flex items-center justify-center px-6">
+                <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full border-t-4 border-uwi-red text-center">
+                  <XCircle className="w-16 h-16 text-uwi-red mx-auto mb-4" />
+                  <h2 className="text-xl font-bold text-uwi-brown mb-2">Unable to Load Data</h2>
+                  <p className="text-gray-600">{dataLoadError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Login Screen (for non-admin, non-logged-in users) */}
+          {!isLoadingData && !dataLoadError && !isLoggedIn && (
+            <LoginScreen 
+              onLogin={handleLecturerLogin}
+              error={loginError}
+              isLoading={false}
+            />
+          )}
+
+          {/* Main Dashboard (for logged-in users) */}
+          {!isLoadingData && !dataLoadError && isLoggedIn && (
+        <div className="min-h-screen bg-gray-100">
+          {/* CETL Logo Header */}
+          <CETLHeader showBetaBadge={isAdminMode} />
+          
+          <div className="max-w-7xl mx-auto px-6 pb-6">
+            {/* Header */}
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-uwi-blue text-center">
+              <h1 className="text-3xl font-bold text-uwi-brown mb-2">
+                {lecturerMode ? 'My Course Experience Review (CER) Dashboard' : 'Course Experience Review (CER) Dashboard'}
+              </h1>
+              <p className="text-gray-600">
+                {lecturerMode 
+                  ? 'View your course response rates and student feedback participation'
+                  : 'Real-time response rate tracking for student surveys'
+                }
+              </p>
+              {lecturerMode && (
+                <div className="mt-3 bg-uwi-gold/20 border border-uwi-gold rounded-md p-3 flex items-center justify-between">
+                  <p className="text-sm text-uwi-brown">
+                    <strong>Welcome{lecturerName ? `, ${lecturerName}` : ''}!</strong> Showing data for Teacher ID: {lecturerTeacherId}
+                  </p>
+                  <button
+                    onClick={handleLogout}
+                    className="text-sm text-uwi-blue hover:text-uwi-brown underline"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Qualtrics API Settings Panel - Admin Only */}
+            {isAdminMode && (
+            <div className="bg-white rounded-lg shadow-md mb-6 border-l-4 border-uwi-blue overflow-hidden">
+              <button
+                onClick={() => setShowApiSettings(!showApiSettings)}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Cloud className="w-5 h-5 text-uwi-blue" />
+                  <span className="font-semibold text-uwi-brown">Qualtrics API Connection</span>
+                  {apiStatus === 'connected' && (
+                    <span className="flex items-center gap-1 text-green-600 text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      Connected
+                    </span>
+                  )}
+                  {apiStatus === 'error' && (
+                    <span className="flex items-center gap-1 text-red-600 text-sm">
+                      <XCircle className="w-4 h-4" />
+                      Error
+                    </span>
+                  )}
+                  {apiStatus === 'disconnected' && (
+                    <span className="text-gray-500 text-sm">Not configured</span>
+                  )}
+                </div>
+                {showApiSettings ? <ChevronUp className="w-5 h-5 text-gray-500" /> : <ChevronDown className="w-5 h-5 text-gray-500" />}
+              </button>
+
+              {showApiSettings && (
+                <div className="p-6 border-t border-gray-200 bg-gray-50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Key className="w-4 h-4 inline mr-1" />
+                        Qualtrics API Token
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={apiToken}
+                          onChange={(e) => setApiToken(e.target.value)}
+                          placeholder="Enter your API token"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-uwi-blue focus:border-uwi-blue"
+                        />
+                        <button
+                          onClick={testApiConnection}
+                          disabled={apiStatus === 'connecting'}
+                          className="px-4 py-2 bg-uwi-blue text-white rounded-md hover:bg-uwi-blue/90 disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {apiStatus === 'connecting' ? (
+                            <><span className="spinner"></span>Testing...</>
+                          ) : (
+                            'Test Connection'
+                          )}
+                        </button>
+                      </div>
+                      {apiToken && apiStatus === 'connected' && (
+                        <button onClick={clearApiToken} className="mt-2 text-sm text-red-600 hover:text-red-800 underline">
+                          Clear saved token
+                        </button>
+                      )}
+                      {apiError && <p className="mt-2 text-sm text-red-600">{apiError}</p>}
+                      <p className="mt-2 text-xs text-gray-500">Your token is stored locally in your browser only.</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-md border border-gray-200">
+                      <h4 className="font-medium text-uwi-brown mb-2">Configuration</h4>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p><strong>Base URL:</strong> {QUALTRICS_CONFIG.baseUrl}</p>
+                        <p><strong>Course Design Survey:</strong> {QUALTRICS_CONFIG.courseDesignSurveyId}</p>
+                        <p><strong>Learning Exp Survey:</strong> {QUALTRICS_CONFIG.learningExpSurveyId}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      <strong>⚠️ Note:</strong> Direct browser-to-Qualtrics API calls may be blocked by CORS restrictions. 
+                      If you encounter errors, you can continue using CSV uploads as a fallback below.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* Data Sources Section - Admin Only */}
+            {isAdminMode && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-uwi-gold">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                <Upload className="w-5 h-5" />
+                Data Sources
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Enrollment Upload */}
+                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <h3 className="font-medium text-uwi-brown mb-3">📁 Enrollment Data (CSV Upload)</h3>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    multiple
+                    onChange={(e) => e.target.files.length > 0 && handleMultipleEnrollmentFiles(e.target.files)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-uwi-blue/10 file:text-uwi-blue hover:file:bg-uwi-blue/20"
+                  />
+                  {enrollmentData.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-green-600 font-semibold">✓ {enrollmentData.length} records from {enrollmentFiles.length} file(s)</p>
+                      <button onClick={clearEnrollmentData} className="mt-1 text-xs text-red-600 hover:text-red-800 underline">Clear</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Course Design Responses */}
+                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <h3 className="font-medium text-uwi-brown mb-3">📊 Course Design Responses</h3>
+                  {apiStatus === 'connected' ? (
+                    <div>
+                      <button
+                        onClick={() => fetchSurveyResponses(QUALTRICS_CONFIG.courseDesignSurveyId, setCourseDesignResponses, setIsLoadingCD, setCdResponseCount)}
+                        disabled={isLoadingCD}
+                        className="w-full px-4 py-2 bg-uwi-gold text-uwi-brown font-medium rounded-md hover:bg-uwi-gold/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isLoadingCD ? (<><span className="spinner"></span>Fetching...</>) : (<><RefreshCw className="w-4 h-4" />Fetch from Qualtrics</>)}
+                      </button>
+                      {cdResponseCount > 0 && <p className="mt-2 text-sm text-green-600 font-semibold">✓ {cdResponseCount} responses loaded</p>}
+                      <p className="mt-2 text-xs text-gray-500">Or upload CSV:</p>
+                      <input type="file" accept=".csv" onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], setCourseDesignResponses)} className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-200 file:text-gray-700" />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">API not connected. Upload CSV:</p>
+                      <input type="file" accept=".csv" onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], setCourseDesignResponses)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-uwi-gold/20 file:text-uwi-brown hover:file:bg-uwi-gold/30" />
+                    </div>
+                  )}
+                  {courseDesignResponses.length > 0 && !cdResponseCount && <p className="text-sm text-green-600 mt-1">✓ {courseDesignResponses.length} responses (CSV)</p>}
+                </div>
+
+                {/* Learning Experience Responses */}
+                <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <h3 className="font-medium text-uwi-brown mb-3">📊 Learning Experience Responses</h3>
+                  {apiStatus === 'connected' ? (
+                    <div>
+                      <button
+                        onClick={() => fetchSurveyResponses(QUALTRICS_CONFIG.learningExpSurveyId, setLearningExpResponses, setIsLoadingLE, setLeResponseCount)}
+                        disabled={isLoadingLE}
+                        className="w-full px-4 py-2 bg-uwi-light-blue text-white font-medium rounded-md hover:bg-uwi-light-blue/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isLoadingLE ? (<><span className="spinner"></span>Fetching...</>) : (<><RefreshCw className="w-4 h-4" />Fetch from Qualtrics</>)}
+                      </button>
+                      {leResponseCount > 0 && <p className="mt-2 text-sm text-green-600 font-semibold">✓ {leResponseCount} responses loaded</p>}
+                      <p className="mt-2 text-xs text-gray-500">Or upload CSV:</p>
+                      <input type="file" accept=".csv" onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], setLearningExpResponses)} className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-gray-200 file:text-gray-700" />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">API not connected. Upload CSV:</p>
+                      <input type="file" accept=".csv" onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], setLearningExpResponses)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-uwi-light-blue/20 file:text-uwi-blue hover:file:bg-uwi-light-blue/30" />
+                    </div>
+                  )}
+                  {learningExpResponses.length > 0 && !leResponseCount && <p className="text-sm text-green-600 mt-1">✓ {learningExpResponses.length} responses (CSV)</p>}
+                </div>
+              </div>
+
+              {/* Fetch All Button */}
+              {apiStatus === 'connected' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={fetchAllResponses}
+                    disabled={isLoadingCD || isLoadingLE}
+                    className="px-6 py-2 bg-uwi-blue text-white font-medium rounded-md hover:bg-uwi-blue/90 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {(isLoadingCD || isLoadingLE) ? (<><span className="spinner"></span>Fetching...</>) : (<><RefreshCw className="w-4 h-4" />Fetch All Responses from Qualtrics</>)}
+                  </button>
+                  {lastFetchTime && <p className="mt-2 text-sm text-gray-500">Last fetched: {lastFetchTime.toLocaleString()}</p>}
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* Overall Statistics */}
+            {overallStats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-uwi-blue">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Total Courses</p>
+                      <p className="text-3xl font-bold text-uwi-brown">{overallStats.totalCourses}</p>
+                    </div>
+                    <BookOpen className="w-10 h-10 text-uwi-blue" />
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-uwi-gold">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Course Design Rate</p>
+                      <p className="text-3xl font-bold text-uwi-brown">{overallStats.courseDesignRate.toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mt-1">{overallStats.totalCDReceived}/{overallStats.totalCDExpected}</p>
+                    </div>
+                    <GraduationCap className="w-10 h-10 text-uwi-gold" />
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-uwi-light-blue">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Learning Exp Rate</p>
+                      <p className="text-3xl font-bold text-uwi-brown">{overallStats.learningExpRate.toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mt-1">{overallStats.totalLEReceived}/{overallStats.totalLEExpected}</p>
+                    </div>
+                    <Users className="w-10 h-10 text-uwi-light-blue" />
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-uwi-brown">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Combined Rate</p>
+                      <p className="text-3xl font-bold text-uwi-brown">{overallStats.combinedRate.toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mt-1">{overallStats.totalCombinedReceived}/{overallStats.totalCombinedExpected}</p>
+                    </div>
+                    <TrendingUp className="w-10 h-10 text-uwi-brown" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Panel - Always visible when data is loaded */}
+            {calculateMetrics && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-uwi-blue">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold flex items-center gap-2 text-uwi-brown">
+                    <Search className="w-5 h-5 text-uwi-blue" />
+                    Filters
+                  </h2>
+                  <button
+                    onClick={clearAllFilters}
+                    disabled={selectedFaculties.length === 0 && selectedDepartments.length === 0 && selectedTeachers.length === 0 && selectedCourseCodes.length === 0}
+                    className={`py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      selectedFaculties.length > 0 || selectedDepartments.length > 0 || selectedTeachers.length > 0 || selectedCourseCodes.length > 0
+                        ? 'bg-uwi-red/10 text-uwi-red hover:bg-uwi-red/20 border border-uwi-red/30'
+                        : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                    }`}
+                  >
+                    {selectedFaculties.length > 0 || selectedDepartments.length > 0 || selectedTeachers.length > 0 || selectedCourseCodes.length > 0
+                      ? `Clear All Filters (${selectedFaculties.length + selectedDepartments.length + selectedTeachers.length + selectedCourseCodes.length} active)`
+                      : 'No Filters Active'
+                    }
+                  </button>
+                </div>
+                
+                {!hideFilters && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Faculty Filter */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gray-600 font-medium">Faculty ({selectedFaculties.length} selected)</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedFaculties([...faculties])}
+                            className="text-xs text-uwi-blue hover:text-uwi-brown underline"
+                          >
+                            All
+                          </button>
+                          <button
+                            onClick={() => setSelectedFaculties([])}
+                            className="text-xs text-uwi-brown hover:text-uwi-blue underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                        {faculties.map(faculty => (
+                          <label key={faculty} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedFaculties.includes(faculty)}
+                              onChange={() => toggleFaculty(faculty)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm text-gray-700">{faculty}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Department Filter */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gray-600 font-medium">Department ({selectedDepartments.length} selected)</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedDepartments([...departments])}
+                            className="text-xs text-uwi-blue hover:text-uwi-brown underline"
+                          >
+                            All
+                          </button>
+                          <button
+                            onClick={() => setSelectedDepartments([])}
+                            className="text-xs text-uwi-brown hover:text-uwi-blue underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                        {departments.length === 0 ? (
+                          <p className="text-xs text-gray-500 text-center py-2">Select a faculty first</p>
+                        ) : (
+                          departments.map(dept => (
+                            <label key={dept} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedDepartments.includes(dept)}
+                                onChange={() => toggleDepartment(dept)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">{dept}</span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Teacher Filter */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gray-600 font-medium">Teacher ({selectedTeachers.length} selected)</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedTeachers([...teachers])}
+                            className="text-xs text-uwi-blue hover:text-uwi-brown underline"
+                          >
+                            All
+                          </button>
+                          <button
+                            onClick={() => setSelectedTeachers([])}
+                            className="text-xs text-uwi-brown hover:text-uwi-blue underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+                        {teachers.length === 0 ? (
+                          <p className="text-xs text-gray-500 text-center py-2">No teachers available</p>
+                        ) : (
+                          teachers.map(teacher => (
+                            <label key={teacher} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedTeachers.includes(teacher)}
+                                onChange={() => toggleTeacher(teacher)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">{teacher}</span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Course Code Filter */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-gray-600 font-medium">Course Code ({selectedCourseCodes.length} selected)</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedCourseCodes([...filteredCourseCodes])}
+                            className="text-xs text-uwi-blue hover:text-uwi-brown underline"
+                          >
+                            {courseCodeSearch ? 'Filtered' : 'All'}
+                          </button>
+                          <button
+                            onClick={() => setSelectedCourseCodes([])}
+                            className="text-xs text-uwi-brown hover:text-uwi-blue underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative mb-2">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search course codes..."
+                          value={courseCodeSearch}
+                          onChange={(e) => setCourseCodeSearch(e.target.value)}
+                          className="w-full pl-8 pr-8 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-uwi-blue focus:border-uwi-blue"
+                        />
+                        {courseCodeSearch && (
+                          <button
+                            onClick={() => setCourseCodeSearch('')}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-32 overflow-y-auto border border-gray-300 rounded-md p-2">
+                        {filteredCourseCodes.length === 0 ? (
+                          <p className="text-xs text-gray-500 text-center py-2">No courses found</p>
+                        ) : (
+                          filteredCourseCodes.map(code => (
+                            <label key={code} className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedCourseCodes.includes(code)}
+                                onChange={() => toggleCourseCode(code)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm text-gray-700">{code}</span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                      {selectedCourseCodes.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {selectedCourseCodes.slice(0, 5).map(code => (
+                            <span 
+                              key={code} 
+                              className="inline-flex items-center px-2 py-0.5 text-xs bg-uwi-blue/10 text-uwi-blue rounded-full"
+                            >
+                              {code}
+                              <button
+                                onClick={() => toggleCourseCode(code)}
+                                className="ml-1 text-uwi-blue hover:text-uwi-brown"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                          {selectedCourseCodes.length > 5 && (
+                            <span className="text-xs text-gray-500">+{selectedCourseCodes.length - 5} more</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {hideFilters && lecturerMode && (
+                  <div className="text-center py-4 text-gray-500">
+                    <Users className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                    <p className="text-sm">Viewing your courses only</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Faculty Level Response Rates */}
+            {calculateMetrics && filteredFacultySummaries.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-uwi-brown">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                  <Building2 className="w-5 h-5 text-uwi-brown" />
+                  Faculty Level Response Rates
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">Aggregate response rates across all faculties</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departments</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Design</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CD Rate</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learning Exp</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LE Rate</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Combined Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredFacultySummaries.map((faculty, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">{faculty.faculty}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">{faculty.departmentCount}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">{faculty.courseCount}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            <span className="font-medium">{faculty.cdReceived}</span>
+                            <span className="text-gray-400">/{faculty.cdExpected}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {getRateBadge(faculty.cdRate)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            <span className="font-medium">{faculty.leReceived}</span>
+                            <span className="text-gray-400">/{faculty.leExpected}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {getRateBadge(faculty.leRate)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {getRateBadge(faculty.combinedRate)}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                      <tr className="font-bold">
+                        <td className="px-4 py-4 text-sm text-gray-900">TOTAL</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {filteredFacultySummaries.reduce((sum, f) => sum + f.departmentCount, 0)}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {filteredFacultySummaries.reduce((sum, f) => sum + f.courseCount, 0)}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          <span className="font-medium">{filteredFacultySummaries.reduce((sum, f) => sum + f.cdReceived, 0)}</span>
+                          <span className="text-gray-400">/{filteredFacultySummaries.reduce((sum, f) => sum + f.cdExpected, 0)}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          {getRateBadge(
+                            filteredFacultySummaries.reduce((sum, f) => sum + f.cdExpected, 0) > 0
+                              ? (filteredFacultySummaries.reduce((sum, f) => sum + f.cdReceived, 0) / filteredFacultySummaries.reduce((sum, f) => sum + f.cdExpected, 0)) * 100
+                              : 0
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          <span className="font-medium">{filteredFacultySummaries.reduce((sum, f) => sum + f.leReceived, 0)}</span>
+                          <span className="text-gray-400">/{filteredFacultySummaries.reduce((sum, f) => sum + f.leExpected, 0)}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          {getRateBadge(
+                            filteredFacultySummaries.reduce((sum, f) => sum + f.leExpected, 0) > 0
+                              ? (filteredFacultySummaries.reduce((sum, f) => sum + f.leReceived, 0) / filteredFacultySummaries.reduce((sum, f) => sum + f.leExpected, 0)) * 100
+                              : 0
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          {getRateBadge(
+                            filteredFacultySummaries.reduce((sum, f) => sum + f.combinedExpected, 0) > 0
+                              ? (filteredFacultySummaries.reduce((sum, f) => sum + f.combinedReceived, 0) / filteredFacultySummaries.reduce((sum, f) => sum + f.combinedExpected, 0)) * 100
+                              : 0
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Department Level Response Rates */}
+            {calculateMetrics && filteredDepartmentSummaries.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-uwi-blue">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                  <Building className="w-5 h-5 text-uwi-blue" />
+                  Department Level Response Rates
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">Aggregate response rates across all departments</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faculty</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Design</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CD Rate</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Learning Exp</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LE Rate</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Combined Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredDepartmentSummaries.map((dept, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900">{dept.department}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">{dept.faculty}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">{dept.courseCount}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            <span className="font-medium">{dept.cdReceived}</span>
+                            <span className="text-gray-400">/{dept.cdExpected}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {getRateBadge(dept.cdRate)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-600">
+                            <span className="font-medium">{dept.leReceived}</span>
+                            <span className="text-gray-400">/{dept.leExpected}</span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {getRateBadge(dept.leRate)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2">
+                              {getRateBadge(dept.combinedRate)}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-100">
+                      <tr className="font-bold">
+                        <td className="px-4 py-4 text-sm text-gray-900">TOTAL</td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {new Set(filteredDepartmentSummaries.map(d => d.faculty)).size} faculties
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          {filteredDepartmentSummaries.reduce((sum, d) => sum + d.courseCount, 0)}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          <span className="font-medium">{filteredDepartmentSummaries.reduce((sum, d) => sum + d.cdReceived, 0)}</span>
+                          <span className="text-gray-400">/{filteredDepartmentSummaries.reduce((sum, d) => sum + d.cdExpected, 0)}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          {getRateBadge(
+                            filteredDepartmentSummaries.reduce((sum, d) => sum + d.cdExpected, 0) > 0
+                              ? (filteredDepartmentSummaries.reduce((sum, d) => sum + d.cdReceived, 0) / filteredDepartmentSummaries.reduce((sum, d) => sum + d.cdExpected, 0)) * 100
+                              : 0
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-600">
+                          <span className="font-medium">{filteredDepartmentSummaries.reduce((sum, d) => sum + d.leReceived, 0)}</span>
+                          <span className="text-gray-400">/{filteredDepartmentSummaries.reduce((sum, d) => sum + d.leExpected, 0)}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          {getRateBadge(
+                            filteredDepartmentSummaries.reduce((sum, d) => sum + d.leExpected, 0) > 0
+                              ? (filteredDepartmentSummaries.reduce((sum, d) => sum + d.leReceived, 0) / filteredDepartmentSummaries.reduce((sum, d) => sum + d.leExpected, 0)) * 100
+                              : 0
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          {getRateBadge(
+                            filteredDepartmentSummaries.reduce((sum, d) => sum + d.combinedExpected, 0) > 0
+                              ? (filteredDepartmentSummaries.reduce((sum, d) => sum + d.combinedReceived, 0) / filteredDepartmentSummaries.reduce((sum, d) => sum + d.combinedExpected, 0)) * 100
+                              : 0
+                          )}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Course Design Response Rates */}
+            {calculateMetrics && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-uwi-gold">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                  <GraduationCap className="w-5 h-5 text-uwi-gold" />
+                  Course Design Survey Response Rates
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => { setSortBy('courseCode'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>
+                          Course Code
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => { setSortBy('cdRate'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>
+                          Response Rate
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredAndSorted.map((course, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900">{course.courseTitle}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseDesignExpected}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseDesignReceived}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm">{getRateBadge(course.courseDesignRate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Learning Experience Response Rates */}
+            {calculateMetrics && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-uwi-light-blue">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                  <Users className="w-5 h-5 text-uwi-light-blue" />
+                  Learning Experience Survey Response Rates
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teachers</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer" onClick={() => { setSortBy('leRate'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>
+                          Response Rate
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredAndSorted.map((course, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900">{course.courseTitle}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.teacherCount}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.learningExpExpected}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.learningExpReceived}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm">{getRateBadge(course.learningExpRate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Combined Course Overview */}
+            {calculateMetrics && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-t-4 border-uwi-blue">
+                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                  <BookOpen className="w-5 h-5 text-uwi-blue" />
+                  Combined Course Overview (Both Survey Types)
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" rowSpan="2">Course Code</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" rowSpan="2">Title</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" rowSpan="2">Department</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-r border-gray-300" colSpan="3">Course Design</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan="3">Learning Experience</th>
+                      </tr>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-gray-300">Expected</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-300">Rate</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredAndSorted.map((course, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.courseCode}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900">{course.courseTitle}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.department}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 border-l border-gray-300">{course.courseDesignExpected}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseDesignReceived}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm border-r border-gray-300">{getRateBadge(course.courseDesignRate)}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.learningExpExpected}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{course.learningExpReceived}</td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm">{getRateBadge(course.learningExpRate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Instructions */}
+            {!calculateMetrics && (
+              <div className="bg-uwi-blue/5 border border-uwi-blue/30 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-uwi-blue flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-uwi-brown mb-2">Getting Started</h3>
+                    <ol className="list-decimal list-inside space-y-2 text-uwi-brown/80">
+                      <li>Select and upload multiple enrollment CSV files (hold Ctrl/Cmd to select multiple files, or select them all at once). You can upload 8-10 files as needed.</li>
+                      <li>Export response data from Qualtrics for Course Design survey (SV_6xtEHLsL42W71iK)</li>
+                      <li>Export response data from Qualtrics for Learning Experience survey (SV_9uJsRkIXOM6Q79I)</li>
+                      <li>Upload both response CSV files using the buttons above</li>
+                      <li>The dashboard will automatically combine all enrollment data, calculate response rates, and display all widgets</li>
+                    </ol>
+                    <p className="mt-4 text-sm text-uwi-blue">
+                      <strong>Note:</strong> Make sure your response exports include the CourseCode column so responses can be matched to courses.
+                    </p>
+                    {lecturerMode && (
+                      <div className="mt-4 bg-uwi-gold/20 border border-uwi-gold rounded p-3">
+                        <p className="text-sm text-uwi-brown font-semibold">
+                          📌 Lecturer Mode Active: You will only see data for your courses (Teacher ID: {lecturerTeacherId})
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* URL Generation Helper (Admin Only) */}
+            {isAdminMode && calculateMetrics && (
+              <div className="bg-uwi-gold/10 border border-uwi-gold/30 rounded-lg p-6 mb-6">
+                <h3 className="font-semibold text-uwi-brown mb-3">📋 Generate Personalized Links for Lecturers</h3>
+                <p className="text-sm text-uwi-brown/80 mb-3">
+                  Create custom dashboard links for individual lecturers. Each link will show only their course data.
+                </p>
+                <div className="bg-white rounded border border-uwi-gold/40 p-3">
+                  <p className="text-xs text-gray-600 mb-2 font-semibold">Link Format:</p>
+                  <code className="text-xs bg-gray-100 p-2 rounded block mb-2 break-all">
+                    {window.location.origin + window.location.pathname}?teacherId=<span className="text-uwi-blue">[TEACHER_ID]</span>
+                  </code>
+                  <p className="text-xs text-gray-600 mt-3 mb-1"><strong>Example:</strong></p>
+                  <code className="text-xs bg-gray-100 p-2 rounded block break-all">
+                    {window.location.origin + window.location.pathname}?teacherId=12345
+                  </code>
+                </div>
+              </div>
+            )}
+            
+            {/* Footer */}
+            <footer className="mt-8 text-center py-4 border-t border-gray-200">
+              <p className="text-sm text-uwi-brown">© {new Date().getFullYear()} The University of the West Indies, St. Augustine Campus</p>
+              <p className="text-xs text-gray-500 mt-1">Centre for Excellence in Teaching and Learning (CETL)</p>
+            </footer>
+          </div>
+        </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.render(<CERDashboard />, document.getElementById('root'));
+  </script>
+</body>
+</html>
