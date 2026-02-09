@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CER Response Rate Dashboard | UWI CETL</title>
+  <title>CER Response Rate Dashboard (Beta) | UWI CETL</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -159,7 +159,7 @@
     };
 
     // CETL Logo Header Component
-    const CETLHeader = ({ showBetaBadge }) => (
+    const CETLHeader = () => (
       <div className="uwi-header py-6 mb-6 shadow-md border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center">
           <img 
@@ -168,71 +168,10 @@
             className="h-36 mb-3"
           />
           <p className="text-black text-base font-medium tracking-wide">Centre for Excellence in Teaching and Learning</p>
-          {showBetaBadge && <span className="mt-2 px-3 py-1 bg-uwi-gold/20 text-uwi-brown text-xs font-semibold rounded-full">Admin Mode</span>}
+          <span className="mt-2 px-3 py-1 bg-uwi-gold/20 text-uwi-brown text-xs font-semibold rounded-full">BETA - Qualtrics API Integration</span>
         </div>
       </div>
     );
-
-    // Login Screen Component
-    const LoginScreen = ({ onLogin, error, isLoading }) => {
-      const [teacherIdInput, setTeacherIdInput] = useState('');
-      
-      const handleSubmit = (e) => {
-        e.preventDefault();
-        if (teacherIdInput.trim()) {
-          onLogin(teacherIdInput.trim());
-        }
-      };
-
-      return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
-          <CETLHeader showBetaBadge={false} />
-          <div className="flex-1 flex items-center justify-center px-6 -mt-20">
-            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full border-t-4 border-uwi-blue">
-              <h1 className="text-2xl font-bold text-uwi-brown text-center mb-2">CER Response Rate Dashboard</h1>
-              <p className="text-gray-600 text-center mb-6">View your course response rates</p>
-              
-              <form onSubmit={handleSubmit}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter your Teacher ID
-                </label>
-                <input
-                  type="text"
-                  value={teacherIdInput}
-                  onChange={(e) => setTeacherIdInput(e.target.value)}
-                  placeholder="e.g., 12345"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-uwi-blue focus:border-uwi-blue text-lg"
-                  autoFocus
-                  autoComplete="off"
-                />
-                {error && (
-                  <p className="mt-2 text-sm text-red-600">{error}</p>
-                )}
-                <button
-                  type="submit"
-                  disabled={!teacherIdInput.trim() || isLoading}
-                  className="w-full mt-4 px-4 py-3 bg-uwi-blue text-white font-semibold rounded-md hover:bg-uwi-blue/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <><span className="spinner"></span>Loading...</>
-                  ) : (
-                    'View My Dashboard'
-                  )}
-                </button>
-              </form>
-              
-              <p className="mt-6 text-xs text-gray-500 text-center">
-                Your Teacher ID can be found in your course assignment records.
-              </p>
-            </div>
-          </div>
-          <footer className="text-center py-4 border-t border-gray-200 bg-white">
-            <p className="text-sm text-uwi-brown">© {new Date().getFullYear()} The University of the West Indies, St. Augustine Campus</p>
-            <p className="text-xs text-gray-500 mt-1">Centre for Excellence in Teaching and Learning (CETL)</p>
-          </footer>
-        </div>
-      );
-    };
 
     const CERDashboard = () => {
       const [enrollmentData, setEnrollmentData] = useState([]);
@@ -253,7 +192,7 @@
       // API-related state
       const [apiToken, setApiToken] = useState('');
       const [showApiSettings, setShowApiSettings] = useState(false);
-      const [apiStatus, setApiStatus] = useState('disconnected');
+      const [apiStatus, setApiStatus] = useState('disconnected'); // 'disconnected', 'connecting', 'connected', 'error'
       const [apiError, setApiError] = useState('');
       const [isLoadingCD, setIsLoadingCD] = useState(false);
       const [isLoadingLE, setIsLoadingLE] = useState(false);
@@ -261,108 +200,26 @@
       const [cdResponseCount, setCdResponseCount] = useState(0);
       const [leResponseCount, setLeResponseCount] = useState(0);
 
-      // Login and auto-load state
-      const [isLoggedIn, setIsLoggedIn] = useState(false);
-      const [isAdminMode, setIsAdminMode] = useState(false);
-      const [loginError, setLoginError] = useState('');
-      const [isLoadingData, setIsLoadingData] = useState(true);
-      const [dataLoadError, setDataLoadError] = useState('');
-      const [lecturerName, setLecturerName] = useState('');
-
-      // Auto-load enrollment data from JSON file on mount
+      // Load API token from localStorage on mount
       useEffect(() => {
-        const loadEnrollmentData = async () => {
-          try {
-            const response = await fetch('enrollment-data.json');
-            if (!response.ok) {
-              throw new Error('Could not load enrollment data file');
-            }
-            const data = await response.json();
-            
-            if (data.enrollmentData && Array.isArray(data.enrollmentData)) {
-              setEnrollmentData(data.enrollmentData);
-              setEnrollmentFiles(['enrollment-data.json']);
-            }
-            
-            // If API token is in the config, use it
-            if (data.apiConfig && data.apiConfig.apiToken) {
-              setApiToken(data.apiConfig.apiToken);
-              setApiStatus('connected');
-            }
-            
-            setIsLoadingData(false);
-          } catch (error) {
-            console.error('Error loading enrollment data:', error);
-            setDataLoadError('Could not load enrollment data. Please contact the administrator.');
-            setIsLoadingData(false);
-          }
-        };
-
-        // Check for admin mode
-        const params = new URLSearchParams(window.location.search);
-        const adminParam = params.get('admin');
-        const teacherIdParam = params.get('teacherId');
-        
-        if (adminParam === 'true') {
-          setIsAdminMode(true);
-          setIsLoggedIn(true);
-          setHideFilters(false);
-        } else if (teacherIdParam) {
-          // Direct link with teacherId (backwards compatibility)
-          setLecturerTeacherId(teacherIdParam);
-          setLecturerMode(true);
-          setIsLoggedIn(true);
-          setHideFilters(true);
+        const savedToken = localStorage.getItem('qualtrics_api_token');
+        if (savedToken) {
+          setApiToken(savedToken);
+          setApiStatus('connected');
         }
-
-        loadEnrollmentData();
       }, []);
 
-      // Handle lecturer login with Teacher ID
-      const handleLecturerLogin = (teacherId) => {
-        setLoginError('');
-        
-        // Check if teacherId exists in enrollment data
-        const teacherExists = enrollmentData.some(row => 
-          String(row.teacherId || row.TeacherId || '') === String(teacherId)
-        );
-        
-        if (teacherExists) {
-          // Find teacher name
-          const teacherRecord = enrollmentData.find(row => 
-            String(row.teacherId || row.TeacherId || '') === String(teacherId)
-          );
-          const name = `${teacherRecord?.teacherFirstName || ''} ${teacherRecord?.teacherLastName || ''}`.trim();
-          
-          setLecturerTeacherId(teacherId);
-          setLecturerMode(true);
-          setIsLoggedIn(true);
-          setHideFilters(true);
-          setLecturerName(name);
-        } else {
-          setLoginError('Teacher ID not found. Please check your ID and try again.');
-        }
-      };
-
-      // Logout function
-      const handleLogout = () => {
-        setIsLoggedIn(false);
-        setLecturerMode(false);
-        setLecturerTeacherId(null);
-        setLecturerName('');
-        setHideFilters(false);
-      };
-
-      // Load API token from localStorage on mount (only for admin mode)
       useEffect(() => {
-        if (isAdminMode) {
-          const savedToken = localStorage.getItem('qualtrics_api_token');
-          if (savedToken) {
-            setApiToken(savedToken);
-            setApiStatus('connected');
-          }
+        const params = new URLSearchParams(window.location.search);
+        const teacherId = params.get('teacherId');
+        const hideFilterParam = params.get('hideFilters');
+        
+        if (teacherId) {
+          setLecturerMode(true);
+          setLecturerTeacherId(teacherId);
+          setHideFilters(hideFilterParam === 'true');
         }
-      }, [isAdminMode]);
+      }, []);
 
       // Save API token to localStorage
       const saveApiToken = () => {
@@ -989,48 +846,9 @@
       };
 
       return (
-        <div>
-          {/* Loading State */}
-          {isLoadingData && (
-            <div className="min-h-screen bg-gray-100 flex flex-col">
-              <CETLHeader showBetaBadge={false} />
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <span className="spinner" style={{ width: '40px', height: '40px', borderWidth: '4px' }}></span>
-                  <p className="mt-4 text-uwi-brown">Loading dashboard data...</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Data Load Error */}
-          {!isLoadingData && dataLoadError && (
-            <div className="min-h-screen bg-gray-100 flex flex-col">
-              <CETLHeader showBetaBadge={false} />
-              <div className="flex-1 flex items-center justify-center px-6">
-                <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full border-t-4 border-uwi-red text-center">
-                  <XCircle className="w-16 h-16 text-uwi-red mx-auto mb-4" />
-                  <h2 className="text-xl font-bold text-uwi-brown mb-2">Unable to Load Data</h2>
-                  <p className="text-gray-600">{dataLoadError}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Login Screen (for non-admin, non-logged-in users) */}
-          {!isLoadingData && !dataLoadError && !isLoggedIn && (
-            <LoginScreen 
-              onLogin={handleLecturerLogin}
-              error={loginError}
-              isLoading={false}
-            />
-          )}
-
-          {/* Main Dashboard (for logged-in users) */}
-          {!isLoadingData && !dataLoadError && isLoggedIn && (
         <div className="min-h-screen bg-gray-100">
           {/* CETL Logo Header */}
-          <CETLHeader showBetaBadge={isAdminMode} />
+          <CETLHeader />
           
           <div className="max-w-7xl mx-auto px-6 pb-6">
             {/* Header */}
@@ -1045,22 +863,15 @@
                 }
               </p>
               {lecturerMode && (
-                <div className="mt-3 bg-uwi-gold/20 border border-uwi-gold rounded-md p-3 flex items-center justify-between">
+                <div className="mt-3 bg-uwi-gold/20 border border-uwi-gold rounded-md p-3 text-left">
                   <p className="text-sm text-uwi-brown">
-                    <strong>Welcome{lecturerName ? `, ${lecturerName}` : ''}!</strong> Showing data for Teacher ID: {lecturerTeacherId}
+                    <strong>Lecturer View:</strong> Showing data for Teacher ID: {lecturerTeacherId}
                   </p>
-                  <button
-                    onClick={handleLogout}
-                    className="text-sm text-uwi-blue hover:text-uwi-brown underline"
-                  >
-                    Logout
-                  </button>
                 </div>
               )}
             </div>
 
-            {/* Qualtrics API Settings Panel - Admin Only */}
-            {isAdminMode && (
+            {/* Qualtrics API Settings Panel */}
             <div className="bg-white rounded-lg shadow-md mb-6 border-l-4 border-uwi-blue overflow-hidden">
               <button
                 onClick={() => setShowApiSettings(!showApiSettings)}
@@ -1142,10 +953,8 @@
                 </div>
               )}
             </div>
-            )}
 
-            {/* Data Sources Section - Admin Only */}
-            {isAdminMode && (
+            {/* Data Sources Section */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-uwi-gold">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
                 <Upload className="w-5 h-5" />
@@ -1236,6 +1045,75 @@
                 </div>
               )}
             </div>
+
+            {/* Original File Upload Section - Hidden since we have new Data Sources above */}
+            {false && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6 border-l-4 border-uwi-gold hidden">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-uwi-brown">
+                <Upload className="w-5 h-5" />
+                Upload Data Files
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Enrollment CSV Files (Select Multiple)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    multiple
+                    onChange={(e) => e.target.files.length > 0 && handleMultipleEnrollmentFiles(e.target.files)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-uwi-blue/10 file:text-uwi-blue hover:file:bg-uwi-blue/20"
+                  />
+                  {enrollmentData.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-green-600 font-semibold">✓ {enrollmentData.length} total records from {enrollmentFiles.length} file(s)</p>
+                      <div className="mt-1 max-h-20 overflow-y-auto">
+                        {enrollmentFiles.map((filename, idx) => (
+                          <p key={idx} className="text-xs text-gray-600">• {filename}</p>
+                        ))}
+                      </div>
+                      <button
+                        onClick={clearEnrollmentData}
+                        className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                      >
+                        Clear all enrollment files
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Course Design Responses
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], setCourseDesignResponses)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-uwi-gold/20 file:text-uwi-brown hover:file:bg-uwi-gold/30"
+                  />
+                  {courseDesignResponses.length > 0 && (
+                    <p className="text-sm text-green-600 mt-1">✓ {courseDesignResponses.length} responses loaded</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Learning Experience Responses
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], setLearningExpResponses)}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-uwi-light-blue/20 file:text-uwi-blue hover:file:bg-uwi-light-blue/30"
+                  />
+                  {learningExpResponses.length > 0 && (
+                    <p className="text-sm text-green-600 mt-1">✓ {learningExpResponses.length} responses loaded</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* End of hidden original file upload section */}
             )}
 
             {/* Overall Statistics */}
@@ -1861,7 +1739,7 @@
             )}
 
             {/* URL Generation Helper (Admin Only) */}
-            {isAdminMode && calculateMetrics && (
+            {!lecturerMode && calculateMetrics && (
               <div className="bg-uwi-gold/10 border border-uwi-gold/30 rounded-lg p-6 mb-6">
                 <h3 className="font-semibold text-uwi-brown mb-3">📋 Generate Personalized Links for Lecturers</h3>
                 <p className="text-sm text-uwi-brown/80 mb-3">
@@ -1870,12 +1748,19 @@
                 <div className="bg-white rounded border border-uwi-gold/40 p-3">
                   <p className="text-xs text-gray-600 mb-2 font-semibold">Link Format:</p>
                   <code className="text-xs bg-gray-100 p-2 rounded block mb-2 break-all">
-                    {window.location.origin + window.location.pathname}?teacherId=<span className="text-uwi-blue">[TEACHER_ID]</span>
+                    {window.location.origin + window.location.pathname}?teacherId=<span className="text-uwi-blue">[TEACHER_ID]</span>&hideFilters=true
                   </code>
                   <p className="text-xs text-gray-600 mt-3 mb-1"><strong>Example:</strong></p>
                   <code className="text-xs bg-gray-100 p-2 rounded block break-all">
-                    {window.location.origin + window.location.pathname}?teacherId=12345
+                    {window.location.origin + window.location.pathname}?teacherId=12345&hideFilters=true
                   </code>
+                  <div className="mt-3 text-xs text-gray-600">
+                    <p><strong>Parameters:</strong></p>
+                    <ul className="list-disc list-inside ml-2 space-y-1">
+                      <li><code>teacherId</code> - The TeacherId from your enrollment CSV</li>
+                      <li><code>hideFilters</code> - Set to "true" to hide filter controls for lecturers</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             )}
@@ -1884,10 +1769,9 @@
             <footer className="mt-8 text-center py-4 border-t border-gray-200">
               <p className="text-sm text-uwi-brown">© {new Date().getFullYear()} The University of the West Indies, St. Augustine Campus</p>
               <p className="text-xs text-gray-500 mt-1">Centre for Excellence in Teaching and Learning (CETL)</p>
+              <p className="text-xs text-uwi-gold mt-2">Beta Version - Qualtrics API Integration</p>
             </footer>
           </div>
-        </div>
-          )}
         </div>
       );
     };
